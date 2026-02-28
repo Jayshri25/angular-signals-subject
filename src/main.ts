@@ -2,85 +2,60 @@ import { Component, computed, effect, signal } from '@angular/core';
 import { bootstrapApplication } from '@angular/platform-browser';
 import { CommonModule } from '@angular/common';
 import { BehaviorSubject, map } from 'rxjs';
+import { SignalShowcaseComponent } from './signal-showcase.component';
 
 @Component({
   selector: 'app-root',
-  imports: [CommonModule],
+  standalone: true,
+  imports: [CommonModule, SignalShowcaseComponent],
+  styleUrls: ['./styles.css'], // Linking external CSS
   template: `
-    <h1>Hello from {{ name }}!</h1>
+    <div class="container">
+      <h2>Comparison: Signals vs. RxJS</h2>
 
-    <div style="padding: 30px; font-family: 'Segoe UI', sans-serif; line-height: 1.6;">
-      <h2 style="color: #dd0031;">Angular Reactivity: Signals vs. RxJS</h2>
-    
-
-      <div style="display: flex; gap: 20px;">
-        
-        <div style="border: 2px solid #5eb1ff; padding: 20px; border-radius: 8px; flex: 1;">
-          <h3>⚡ Signals Approach</h3>
-          <p>Current Count: <strong>{{ countSignal() }}</strong></p>
-          <p>Double (Computed): <strong>{{ doubleSignal() }}</strong></p>
-          
-          <button (click)="incrementSignal()" style="background: #5eb1ff;  padding: 10px; cursor: pointer;">
-            Increment Signal
-          </button>
-          <ul style="font-size: 0.8rem; margin-top: 10px;">
-            <li>No Async pipe needed</li>
-            <li>Glitch-free (synchronous)</li>
-          </ul>
+      <div class="grid">
+        <div class="card signal-card">
+          <h3>⚡ Signals</h3>
+          <p>Value: <b>{{ countSig() }}</b></p>
+          <p>Double: <b>{{ doubleSig() }}</b></p>
+          <button (click)="incSig()">Increment</button>
         </div>
 
-        <div style="border: 2px solid #c2185b; padding: 20px; border-radius: 8px; flex: 1;">
-          <h3>Streams (RxJS)</h3>
-          <p>Current Count: <strong>{{ countSubject$ | async }}</strong></p>
-          <p>Double (Pipe): <strong>{{ doubleObservable$ | async }}</strong></p>
-          
-          <button (click)="incrementSubject()" style="background: #c2185b; padding: 10px; cursor: pointer;">
-            Increment Subject
-          </button>
-          <ul style="font-size: 0.8rem; margin-top: 10px;">
-            <li>Requires <code>| async</code> pipe</li>
-            <li>Powerful for event streams</li>
-          </ul>
+        <div class="card rxjs-card">
+          <h3>🌊 RxJS</h3>
+          <p>Value: <b>{{ count$ | async }}</b></p>
+          <p>Double: <b>{{ double$ | async }}</b></p>
+          <button (click)="incRx()">Increment</button>
         </div>
-
       </div>
     </div>
+    <app-signal-showcase></app-signal-showcase>
   `,
 })
 export class App {
-  name = 'Jayshri';
+  // --- 1. SIGNAL APPROACH ---
+  countSig = signal(0); 
+  doubleSig = computed(() => this.countSig() * 2); // Derived state (Auto-tracks)
 
-  // --- 1. SIGNAL IMPLEMENTATION ---
-  countSignal = signal(0);
-
-  // A computed signal automatically updates when countSignal changes
-  doubleSignal = computed(() => this.countSignal() * 2);
+  // --- 2. RXJS APPROACH ---
+  count$ = new BehaviorSubject(0);
+  double$ = this.count$.pipe(map(v => v * 2)); // Derived state (Requires Pipe)
 
   constructor() {
-    // Effect runs whenever the signal inside it changes
-    effect(() => {
-      console.log('Signal changed to:', this.countSignal());
-    });
+    // --- 3. SIDE EFFECTS ---
+    // Signals use 'effect' (runs automatically when countSig changes)
+    effect(() => console.log('Signal changed:', this.countSig()));
+
+    // RxJS uses 'subscribe' (requires manual cleanup in real apps)
+    this.count$.subscribe(v => console.log('RxJS changed:', v));
   }
 
-  incrementSignal() {
-    this.countSignal.update((val) => val + 1);
+  incSig() {
+    this.countSig.update(v => v + 1); // Signal update syntax
   }
 
-  // --- 2. RXJS IMPLEMENTATION ---
-  // BehaviorSubject holds the current value
-  private countSubject = new BehaviorSubject<number>(0);
-
-  // Expose as Observable for the template
-  countSubject$ = this.countSubject.asObservable();
-
-  // Use .pipe() to derive new values (similar to computed)
-  doubleObservable$ = this.countSubject$.pipe(map((val) => val * 2));
-
-  incrementSubject() {
-    const currentValue = this.countSubject.value;
-    this.countSubject.next(currentValue + 1);
-    console.log('Subject pushed:', this.countSubject.value);
+  incRx() {
+    this.count$.next(this.count$.value + 1); // RxJS push syntax
   }
 }
 
